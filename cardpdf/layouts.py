@@ -6,17 +6,17 @@ class Slot:
     # (x,y) is the bottom left corner of the rectangle
     x: float
     y: float 
+    height: float
     width: float
-    length: float
 
     def printData(self):
-        print(f"Slot @({self.x:2f}, {self.y:2f}): {self.width:2f}x{self.length:2f}")
+        print(f"Slot @({self.x:.2f}, {self.y:.2f}): {self.height:.2f}x{self.width:.2f}")
 
 
 class Layout:
     def __init__(self, pageSize: Tuple[float, float], cardSize: Tuple[float, float], padding: Tuple[float, float], excess: Tuple[float, float]):
-        # in the tuples (T): T[0] -> TLength / T[1] -> TWidth
-        self.layout = []
+        # in the tuples (T): T[0] -> TWidth / T[1] -> THeight
+        self.layout: List[Slot] = []
         self.pageSize = pageSize
         self.cardSize = cardSize
         self.padBox = padding
@@ -33,6 +33,12 @@ class Layout:
         return len(self.layout)
 
 
+    def printLayoutInfo(self) -> None:
+        print(f"{self.length()} slots:")
+        for slot in self.layout:
+            slot.printData()
+
+
 
 class GridLayout(Layout):
     def __init__(self, pageSize: Tuple[float, float], cardSize: Tuple[float, float], padding: Tuple[float, float], excess: Tuple[float, float], rows: int=0, columns: int=0):
@@ -40,6 +46,11 @@ class GridLayout(Layout):
         self.rows = rows
         self.columns = columns
         self.layout = self._buildLayout()
+
+
+    def printLayoutInfo(self) -> None:
+        print(f"GridLayout: {self.rows} x {self.columns} (Rows x Cols)")
+        return super().printLayoutInfo()
 
 
     def _buildLayout(self) -> List[Slot]:
@@ -52,23 +63,24 @@ class GridLayout(Layout):
 
 
     def _calculateSlot(self, row: int, column: int) -> Slot:
-        if(not (0 < row <= self.rows)):
+        if(not (0 <= row < self.rows)):
             raise Exception(f"GridLayout tried to CALCULATE OUT OF BOUNDS: {self.rows} rows available, but tried to get {row}")
-        if(not (0 < column <= self.columns)):
+        if(not (0 <= column < self.columns)):
             raise Exception(f"GridLayout tried to CALCULATE OUT OF BOUNDS: {self.columns} columns available, but tried to get {column}")
 
         # Calculate
+        # [0] Width, [1] Height
         posX = self.excessBox[0] + row * (self.padBox[0] + self.cardSize[0])
-        posY = self.excessBox[1] + column * (self.padBox[1] + self.cardSize[1])+ self.cardSize[1]
+        posY = self.excessBox[1] + column * (self.padBox[1] + self.cardSize[1])
 
         # Validate
         if posY > (self.pageSize[1] - self.excessBox[1]):
-            raise Exception(f"GridLayout tried to place Slot Y={posY:2f}, which is out of the border >@{(self.pageSize[1] - self.excessBox[1]):2f}")
+            raise Exception(f"GridLayout tried to place Slot Y={posY:2f}, which is out of the border >@{(self.pageSize[1] - self.excessBox[1]):.2f}")
         if (posX + self.cardSize[0]) > (self.pageSize[0] - self.excessBox[0]):
-            raise Exception(f"GridLayout tried to place Slot X={(posX + self.cardSize[0]):2f}, which is out of the border >@{(self.pageSize[0] - self.excessBox[0]):2f}")
+            raise Exception(f"GridLayout tried to place Slot X={(posX + self.cardSize[0]):2f}, which is out of the border >@{(self.pageSize[0] - self.excessBox[0]):.2f}")
         
         # Build
-        slot = Slot(x=posX, y=posY, length=self.cardSize[0], width=self.cardSize[1])
+        slot = Slot(x=posX, y=posY, width=self.cardSize[0], height=self.cardSize[1])
 
         return slot
 
@@ -79,25 +91,29 @@ class DirectionalLayout(GridLayout):
         super().__init__(pageSize, cardSize, padding, excess)
 
         self.isRotated = self._getOrientation()
-
         self.layout = self._buildLayout()
 
+    
+    def printLayoutInfo(self) -> None:
+        print(f"Directional Layout: Rotation {self.isRotated}")
+        return super().printLayoutInfo()
+    
 
     def _getOrientation(self) -> bool:
         isRotated = False
-        usablePageLength = self.pageSize[0] - 2 * self.excessBox[0]
-        usablePageWidth = self.pageSize[1] - 2 * self.excessBox[1]
-        paddedCardLength = self.cardSize[0] + 2 * self.padBox[0]
-        paddedCardWidth = self.cardSize[1] + 2 * self.padBox[1]
+        usablePageWidth = self.pageSize[0] - 2 * self.excessBox[0]
+        usablePageHeight = self.pageSize[1] - 2 * self.excessBox[1]
+        paddedCardWidth = self.cardSize[0] + 2 * self.padBox[0]
+        paddedCardHeight = self.cardSize[1] + 2 * self.padBox[1]
 
 
-        fixedCardRows = int(usablePageLength / paddedCardLength) 
-        fixedCardColumns = int(usablePageWidth / paddedCardWidth) 
+        fixedCardRows = int(usablePageWidth / paddedCardWidth) 
+        fixedCardColumns = int(usablePageHeight / paddedCardHeight) 
 
-        paddedCardWidth, paddedCardLength = paddedCardLength, paddedCardWidth
+        paddedCardHeight, paddedCardWidth = paddedCardWidth, paddedCardHeight
 
-        rotatedCardRows = int(usablePageLength / paddedCardLength) 
-        rotatedCardColumns = int(usablePageWidth / paddedCardWidth) 
+        rotatedCardRows = int(usablePageWidth / paddedCardWidth) 
+        rotatedCardColumns = int(usablePageHeight / paddedCardHeight) 
 
         fixedYield = fixedCardRows * fixedCardColumns
         rotatedYield = rotatedCardRows * rotatedCardColumns
