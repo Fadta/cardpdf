@@ -1,6 +1,6 @@
 from typing import  Tuple
 from reportlab.pdfgen.canvas import Canvas
-from PIL.Image import Image
+from PIL import Image
 from layouts import DirectionalLayout
 
 
@@ -26,14 +26,15 @@ class Mosaic(Canvas):
         super().showPage()
 
     
-    def addCard(self, img) -> None:
+    def addCard(self, imgPath: str) -> None:
         if(self._iter_index >= self._layout.length()):
             self.showPage()
 
+        print(f"Adding card {self._iter_index+1}", end="\r")
+        img = Image.open(imgPath)
         if(self._layout.isRotated):
             img = img.rotate(90, expand=True)
 
-        print(f"Adding card {self._iter_index+1}", end="\r")
         slot = self._layout.getSlot(self._iter_index)
         self._iter_index += 1
         self.drawInlineImage(img, slot.x, slot.y, slot.width, slot.height)  # Using drawInlineImage instead of drawImage, because of an exception I can't comprehend and couldn't find googling
